@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Image,
   useWindowDimensions,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import OTPInput from '../components/auth/OTPInput';
 import Button from '../components/common/Button';
+import AlertOverlay from '../components/common/AlertOverlay';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/constants';
 import authService from '../services/authService';
 import { formatPhoneNumber, normalizePhoneNumber } from '../utils/validators';
@@ -37,6 +37,12 @@ const OTPVerificationScreen = ({ navigation, route }) => {
   const [resendLoading, setResendLoading] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [alertState, setAlertState] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     let interval;
@@ -80,11 +86,21 @@ const OTPVerificationScreen = ({ navigation, route }) => {
           navigation.replace('Home');
         }
       } else {
-        Alert.alert('Error', result.error);
+        setAlertState({
+          visible: true,
+          type: 'error',
+          title: 'Verification failed',
+          message: result.error,
+        });
         setOtp('');
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to verify OTP. Please try again.');
+      setAlertState({
+        visible: true,
+        type: 'error',
+        title: 'Verification failed',
+        message: 'Failed to verify OTP. Please try again.',
+      });
       console.error('OTP verification error:', err);
       setOtp('');
     } finally {
@@ -101,13 +117,28 @@ const OTPVerificationScreen = ({ navigation, route }) => {
       const result = await authService.sendOTP(normalizedPhone);
 
       if (result.success) {
-        Alert.alert('Success', 'OTP sent successfully');
+        setAlertState({
+          visible: true,
+          type: 'success',
+          title: 'OTP sent',
+          message: 'A new verification code has been sent to your phone.',
+        });
       } else {
-        Alert.alert('Error', result.error);
+        setAlertState({
+          visible: true,
+          type: 'error',
+          title: 'Resend failed',
+          message: result.error,
+        });
         setCanResend(true);
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
+      setAlertState({
+        visible: true,
+        type: 'error',
+        title: 'Resend failed',
+        message: 'Failed to resend OTP. Please try again.',
+      });
       console.error('Resend OTP error:', err);
       setCanResend(true);
     } finally {
@@ -163,19 +194,21 @@ const OTPVerificationScreen = ({ navigation, route }) => {
                 }}
               />
 
-              <View style={styles.resendContainer}>
-                {canResend ? (
-                  <TouchableOpacity onPress={handleResendOTP} disabled={resendLoading}>
-                    <Text style={styles.resendText}>
-                      <Text style={styles.resendLabel}>Resend</Text> code in 60 seconds
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <Text style={styles.resendText}>
-                    <Text style={styles.resendLabel}>Resend</Text> code in {timer} seconds
-                  </Text>
-                )}
-              </View>
+          <View style={styles.resendContainer}>
+            {canResend ? (
+              <TouchableOpacity onPress={handleResendOTP} disabled={resendLoading}>
+                            <Text style={styles.resendHint}>Didn't receive a code?</Text>
+
+                <Text style={styles.resendText}>
+                  Click <Text style={styles.resendLabel}>Resend</Text> to get a new code
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.resendText}>
+                <Text style={styles.resendLabel}>Resend</Text> code after {timer} seconds
+              </Text>
+            )}
+          </View>
 
               <Button
                 title="Submit"
@@ -188,6 +221,14 @@ const OTPVerificationScreen = ({ navigation, route }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AlertOverlay
+        visible={alertState.visible}
+        type={alertState.type}
+        title={alertState.title}
+        message={alertState.message}
+        onClose={() => setAlertState((prev) => ({ ...prev, visible: false }))}
+      />
 
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -260,6 +301,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     marginBottom: 20,
+  },
+  resendHint: {
+    fontSize: FONTS.sizes.small,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   resendText: {
     fontSize: FONTS.sizes.small,

@@ -19,6 +19,7 @@ import { db } from '../../firebase.config';
 import { doc, getDoc, updateDoc } from '@react-native-firebase/firestore';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
+import AlertOverlay from '../components/common/AlertOverlay';
 
 const HomeScreen = ({ navigation }) => {
   const { width, height } = useWindowDimensions();
@@ -61,6 +62,12 @@ const HomeScreen = ({ navigation }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [alertState, setAlertState] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     getCurrentLocation();
@@ -112,12 +119,22 @@ const HomeScreen = ({ navigation }) => {
         updatedAt: new Date().toISOString(),
       });
 
-      Alert.alert('Success', 'Profile updated successfully');
+      setAlertState({
+        visible: true,
+        type: 'success',
+        title: 'Profile updated',
+        message: 'Your profile has been updated successfully.',
+      });
       setShowProfileModal(false);
       loadUserProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
+      setAlertState({
+        visible: true,
+        type: 'error',
+        title: 'Update failed',
+        message: 'Failed to update profile. Please try again.',
+      });
     }
   };
 
@@ -356,6 +373,14 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      <AlertOverlay
+        visible={alertState.visible}
+        type={alertState.type}
+        title={alertState.title}
+        message={alertState.message}
+        onClose={() => setAlertState((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };

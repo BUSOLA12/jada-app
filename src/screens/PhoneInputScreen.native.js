@@ -6,13 +6,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Alert,
   Image,
   useWindowDimensions,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/common/Button';
+import AlertOverlay from '../components/common/AlertOverlay';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/constants';
 import { validatePhoneNumber, formatPhoneNumber, normalizePhoneNumber } from '../utils/validators';
 import authService from '../services/authService';
@@ -47,6 +47,12 @@ const PhoneInputScreen = ({ navigation }) => {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [alertState, setAlertState] = useState({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
   const phoneIllustration = require('../../assets/phone-illustration.png');
   const cleanedPhone = phone.replace(/\D/g, '');
   const normalizedPhone = normalizePhoneNumber(phone);
@@ -94,10 +100,20 @@ const PhoneInputScreen = ({ navigation }) => {
           phone: normalizedPhone,
         });
       } else {
-        Alert.alert('Error', result.error);
+        setAlertState({
+          visible: true,
+          type: 'error',
+          title: 'OTP failed',
+          message: result.error,
+        });
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      setAlertState({
+        visible: true,
+        type: 'error',
+        title: 'OTP failed',
+        message: 'Failed to send OTP. Please try again.',
+      });
       console.error('Phone input error:', err);
     } finally {
       setLoading(false);
@@ -201,6 +217,14 @@ const PhoneInputScreen = ({ navigation }) => {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AlertOverlay
+        visible={alertState.visible}
+        type={alertState.type}
+        title={alertState.title}
+        message={alertState.message}
+        onClose={() => setAlertState((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 };
