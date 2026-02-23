@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "jada-app",
+    "slug": "jada-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jada.iosapp",
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+
+    "android": {
+      "package": "com.jada.app",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/crashlytics"
+    ],
+
+    "extra": {
+      "eas": {
+        "projectId": "e41507ab-0c52-4ecc-b51c-1c15e3415fe3"
+      }
+    },
+    "owner": "web79"
+  }
+}
