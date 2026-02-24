@@ -16,3 +16,8 @@ apps/*/.metro-health-check*
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+.env
+
+
+firebase-config.js
+
