@@ -1,0 +1,184 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isDriverStatus(status) {
+      return status in [
+        'UNVERIFIED',
+        'PENDING_REVIEW',
+        'ACTIVE',
+        'REJECTED',
+        'SUSPENDED',
+      ];
+    }
+
+    function isOnboardingStep(step) {
+      return step in [
+        'ACCOUNT',
+        'DOCUMENTS',
+        'VEHICLE',
+        'BACKGROUND',
+        'TRAINING',
+        'REVIEW',
+        'DONE',
+      ];
+    }
+
+    function isDocumentType(type) {
+      return type in [
+        'LICENSE',
+        'GOV_ID',
+        'PROFILE_PHOTO',
+        'VEHICLE_REG',
+        'INSURANCE',
+        'ROADWORTHINESS',
+      ];
+    }
+
+    function isDocumentStatus(status) {
+      return status in ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'];
+    }
+
+    function isVehicleStatus(status) {
+      return status in ['PENDING', 'APPROVED', 'REJECTED'];
+    }
+
+    function isBackgroundStatus(status) {
+      return status in ['NOT_STARTED', 'IN_REVIEW', 'PASSED', 'FAILED'];
+    }
+
+    function ownerCanCreateDriver(uid) {
+      return request.resource.data.uid == uid &&
+        isDriverStatus(request.resource.data.status) &&
+        request.resource.data.status == 'UNVERIFIED' &&
+        isOnboardingStep(request.resource.data.onboardingStep);
+    }
+
+    function ownerCanUpdateDriver() {
+      return request.resource.data.uid == resource.data.uid &&
+        isDriverStatus(request.resource.data.status) &&
+        isOnboardingStep(request.resource.data.onboardingStep) &&
+        (
+          request.resource.data.status == resource.data.status ||
+          request.resource.data.status in ['UNVERIFIED', 'PENDING_REVIEW']
+        ) &&
+        (
+          !(resource.data.status in ['ACTIVE', 'REJECTED', 'SUSPENDED']) ||
+          request.resource.data.status == resource.data.status
+        );
+    }
+
+    function ownerCanCreateOrUpdateDriverDocument() {
+      return isDocumentType(request.resource.data.type) &&
+        isDocumentStatus(request.resource.data.status) &&
+        request.resource.data.status == 'PENDING' &&
+        (!('rejectionReason' in request.resource.data) || request.resource.data.rejectionReason == null) &&
+        (!('reviewedAt' in request.resource.data) || request.resource.data.reviewedAt == null);
+    }
+
+    function ownerCanUpdateExistingDriverDocument() {
+      return isDocumentType(request.resource.data.type) &&
+        isDocumentStatus(request.resource.data.status) &&
+        (
+          request.resource.data.status == resource.data.status ||
+          request.resource.data.status == 'PENDING'
+        ) &&
+        (!('rejectionReason' in request.resource.data) || request.resource.data.rejectionReason == null) &&
+        (!('reviewedAt' in request.resource.data) || request.resource.data.reviewedAt == null);
+    }
+
+    function ownerCanCreateOrUpdateVehicle() {
+      return isVehicleStatus(request.resource.data.status) &&
+        request.resource.data.status == 'PENDING';
+    }
+
+    function ownerCanUpdateExistingVehicle() {
+      return isVehicleStatus(request.resource.data.status) &&
+        (
+          request.resource.data.status == resource.data.status ||
+          request.resource.data.status == 'PENDING'
+        );
+    }
+
+    function ownerCanCreateOrUpdateBackground() {
+      return isBackgroundStatus(request.resource.data.status) &&
+        request.resource.data.status == 'NOT_STARTED';
+    }
+
+    function ownerCanUpdateExistingBackground() {
+      return isBackgroundStatus(request.resource.data.status) &&
+        request.resource.data.status == resource.data.status;
+    }
+
+    function ownerCanWritePlate(uid, plateId) {
+      return request.resource.data.driverUid == uid &&
+        request.resource.data.plate == plateId;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /drivers/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isAdmin() || (isOwner(uid) && ownerCanCreateDriver(uid));
+      allow update: if isAdmin() || (isOwner(uid) && ownerCanUpdateDriver());
+      allow delete: if isAdmin();
+
+      match /documents/{docId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isAdmin() || (isOwner(uid) && ownerCanCreateOrUpdateDriverDocument());
+        allow update: if isAdmin() || (isOwner(uid) && ownerCanUpdateExistingDriverDocument());
+        allow delete: if isAdmin();
+      }
+
+      match /vehicle/{vehicleId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isAdmin() || (isOwner(uid) && ownerCanCreateOrUpdateVehicle());
+        allow update: if isAdmin() || (isOwner(uid) && ownerCanUpdateExistingVehicle());
+        allow delete: if isAdmin();
+      }
+
+      match /backgroundCheck/{backgroundId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if isAdmin() || (isOwner(uid) && ownerCanCreateOrUpdateBackground());
+        allow update: if isAdmin() || (isOwner(uid) && ownerCanUpdateExistingBackground());
+        allow delete: if isAdmin();
+      }
+
+      match /agreements/{agreementId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create, update: if isOwner(uid) || isAdmin();
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /plates/{plateId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() ||
+        (isOwner(request.auth.uid) && ownerCanWritePlate(request.auth.uid, plateId));
+      allow update: if isAdmin() ||
+        (isSignedIn() &&
+          resource.data.driverUid == request.auth.uid &&
+          ownerCanWritePlate(request.auth.uid, plateId));
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.driverUid == request.auth.uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

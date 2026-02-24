@@ -13,6 +13,8 @@ import Button from '../components/common/Button';
 import { COLORS, SIZES, FONTS, SHADOWS } from '../utils/constants';
 import permissionsService from '../services/permissionsService';
 import { useAuth } from '../hooks/useAuth';
+import { useDriver } from '../hooks/useDriver';
+import { resolveDriverPostPermissionRoute } from '../utils/driverRouting';
 import { logBreadcrumb, recordError } from '../monitoring/crashlytics';
 
 const PermissionsScreen = ({ navigation }) => {
@@ -49,6 +51,7 @@ const PermissionsScreen = ({ navigation }) => {
   const notificationPermissionIcon = require('../../assets/notification-permission-icon.png');
 
   const { markPermissionsGranted } = useAuth();
+  const { driver } = useDriver();
 
   const [locationGranted, setLocationGranted] = useState(false);
   const [notificationGranted, setNotificationGranted] = useState(false);
@@ -130,8 +133,9 @@ const PermissionsScreen = ({ navigation }) => {
     setContinueLoading(true);
     try {
       await markPermissionsGranted();
-      logBreadcrumb('Permissions: navigating to Home');
-      navigation.replace('Home');
+      const targetRoute = resolveDriverPostPermissionRoute(driver?.status);
+      logBreadcrumb(`Permissions: navigating to ${targetRoute}`);
+      navigation.replace(targetRoute);
     } finally {
       setContinueLoading(false);
     }

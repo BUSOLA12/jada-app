@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jada Admin Login</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <main class="auth-shell">
+      <section class="card auth-card">
+        <h1 class="page-title">Admin Login</h1>
+        <p class="page-subtitle">Sign in with an account that has Firebase custom claim <strong>admin: true</strong>.</p>
+
+        <div id="error-box" class="error-box hidden" style="margin: 12px 0"></div>
+
+        <form id="login-form" class="stack" autocomplete="on">
+          <label>
+            <div class="muted" style="margin-bottom: 6px">Email</div>
+            <input type="email" name="email" required placeholder="admin@jada.com" />
+          </label>
+          <label>
+            <div class="muted" style="margin-bottom: 6px">Password</div>
+            <input type="password" name="password" required placeholder="Password" />
+          </label>
+
+          <button class="btn-primary" type="submit">Sign in</button>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="./js/login.js"></script>
+  </body>
+</html>

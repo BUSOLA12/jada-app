@@ -12,7 +12,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc } from '@react-native-firebase/firestore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Button from '../components/common/Button';
@@ -145,7 +144,7 @@ const PhoneInputScreen = ({ navigation }) => {
           avatarUrl: firebaseUser.photoURL || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          userType: 'rider',
+          userType: 'driver',
           isNewUser: true,
         },
         { merge: true }
@@ -156,16 +155,14 @@ const PhoneInputScreen = ({ navigation }) => {
         {
           email: firebaseUser.email || '',
           avatarUrl: firebaseUser.photoURL || '',
+          userType: 'driver',
           updatedAt: new Date().toISOString(),
           lastLoginAt: new Date().toISOString(),
         },
         { merge: true }
       );
     }
-
-    const permissionsStatus = await AsyncStorage.getItem('permissionsGranted');
-    const permissionsCompleted = permissionsStatus === 'true';
-    navigation.replace(permissionsCompleted ? 'Home' : 'Permissions');
+    navigation.replace('Splash');
   };
 
   const handleContinueWithGoogle = async () => {

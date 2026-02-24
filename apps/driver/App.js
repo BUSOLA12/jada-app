@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import { AuthProvider } from './src/context/AuthContext';
+import { DriverProvider } from './src/context/DriverContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -54,8 +55,10 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <StatusBar style="dark" />
-          <AppNavigator />
+          <DriverProvider>
+            <StatusBar style="dark" />
+            <AppNavigator />
+          </DriverProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

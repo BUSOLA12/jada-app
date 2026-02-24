@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jada Admin Dashboard</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="nav-brand">Jada Admin</div>
+      <nav class="nav-links">
+        <a class="nav-link" data-nav="dashboard" href="./index.html">Dashboard</a>
+        <a class="nav-link" data-nav="drivers" href="./drivers.html">Drivers</a>
+        <a class="nav-link" data-nav="trips" href="./trips.html">Trips</a>
+        <a class="nav-link" data-nav="payments" href="./payments.html">Payments</a>
+        <a class="nav-link" data-nav="settings" href="./settings.html">Settings</a>
+      </nav>
+      <div class="nav-actions">
+        <span id="signed-in-email" class="muted"></span>
+        <button id="logout-btn" class="btn-outline" type="button">Logout</button>
+      </div>
+    </header>
+
+    <main class="container stack">
+      <section class="card">
+        <h1 class="page-title">Driver Onboarding Overview</h1>
+        <p class="page-subtitle">Quick status summary of onboarding records from Firestore.</p>
+      </section>
+
+      <section class="card">
+        <div id="dashboard-error" class="error-box hidden" style="margin-bottom: 12px"></div>
+        <div class="grid">
+          <div class="metric">
+            <div class="label">Total Drivers</div>
+            <div class="value" id="metric-total">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Pending Review</div>
+            <div class="value" id="metric-pending">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Active</div>
+            <div class="value" id="metric-active">-</div>
+          </div>
+          <div class="metric">
+            <div class="label">Rejected</div>
+            <div class="value" id="metric-rejected">-</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./js/dashboard.js"></script>
+  </body>
+</html>

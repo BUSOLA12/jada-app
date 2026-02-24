@@ -7,6 +7,8 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { COLORS } from '../utils/constants';
 import { useAuth } from '../hooks/useAuth';
+import { useDriver } from '../hooks/useDriver';
+import { resolveDriverPostPermissionRoute } from '../utils/driverRouting';
 import Logo from '../../assets/jada-logo.svg';
 
 SplashScreen.preventAutoHideAsync();
@@ -16,6 +18,7 @@ const SPLASH_MIN_DURATION_MS = 1000; // Minimum duration for the splash screen (
 const SplashScreenComponent = ({ navigation }) => {
   const { width, height } = useWindowDimensions();
   const { user, loading, permissionsGranted } = useAuth();
+  const { driver, loading: driverLoading } = useDriver();
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   const logoSize = clamp(Math.round(Math.min(width, height) * 0.38), 150, 260);
 
@@ -34,10 +37,10 @@ const SplashScreenComponent = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !driverLoading) {
       if (user) {
         if (permissionsGranted) {
-          navigation.replace('Home');
+          navigation.replace(resolveDriverPostPermissionRoute(driver?.status));
         } else {
           navigation.replace('Permissions');
         }
@@ -45,7 +48,7 @@ const SplashScreenComponent = ({ navigation }) => {
         navigation.replace('Welcome');
       }
     }
-  }, [user, loading, permissionsGranted, navigation]);
+  }, [user, loading, driverLoading, permissionsGranted, driver?.status, navigation]);
 
   return (
     <View style={styles.container}>

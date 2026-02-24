@@ -20,7 +20,6 @@ import authService from '../services/authService';
 import { formatPhoneNumber, normalizePhoneNumber } from '../utils/validators';
 import { db } from '../../firebase.config';
 import { doc, getDoc, setDoc } from '@react-native-firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const OTPVerificationScreen = ({ navigation, route }) => {
   const { phone } = route.params;
@@ -100,24 +99,30 @@ const OTPVerificationScreen = ({ navigation, route }) => {
         // Check if user profile exists in Firestore
         const userRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userRef);
+        const userExists =
+          typeof userDoc?.exists === 'function' ? userDoc.exists() : Boolean(userDoc?.exists);
 
-        if (!userDoc.exists) {
+        if (!userExists) {
           // First time user - create basic profile
           await setDoc(userRef, {
             phoneNumber: user.phoneNumber,
             createdAt: new Date().toISOString(),
-            userType: 'rider',
+            userType: 'driver',
             isNewUser: true,
           });
-
-          // Navigate to Permissions (first time)
-          navigation.replace('Permissions');
         } else {
-          // Existing user - only go Home if permissions were completed.
-          const permissionsStatus = await AsyncStorage.getItem('permissionsGranted');
-          const permissionsCompleted = permissionsStatus === 'true';
-          navigation.replace(permissionsCompleted ? 'Home' : 'Permissions');
+          await setDoc(
+            userRef,
+            {
+              updatedAt: new Date().toISOString(),
+              lastLoginAt: new Date().toISOString(),
+              userType: 'driver',
+            },
+            { merge: true }
+          );
         }
+
+        navigation.replace('Splash');
       } else {
         setAlertState({
           visible: true,

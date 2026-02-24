@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jada Admin Driver Detail</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="nav-brand">Jada Admin</div>
+      <nav class="nav-links">
+        <a class="nav-link" data-nav="dashboard" href="./index.html">Dashboard</a>
+        <a class="nav-link" data-nav="drivers" href="./drivers.html">Drivers</a>
+        <a class="nav-link" data-nav="trips" href="./trips.html">Trips</a>
+        <a class="nav-link" data-nav="payments" href="./payments.html">Payments</a>
+        <a class="nav-link" data-nav="settings" href="./settings.html">Settings</a>
+      </nav>
+      <div class="nav-actions">
+        <span id="signed-in-email" class="muted"></span>
+        <button id="logout-btn" class="btn-outline" type="button">Logout</button>
+      </div>
+    </header>
+
+    <main class="container stack">
+      <section class="card stack">
+        <div class="row" style="justify-content: space-between">
+          <h1 id="driver-heading" class="page-title">Driver</h1>
+          <div id="driver-status-badge"></div>
+        </div>
+        <div id="detail-error" class="error-box hidden"></div>
+        <div id="driver-profile"></div>
+      </section>
+
+      <section class="card stack">
+        <h2>Driver Status</h2>
+        <div class="row">
+          <select id="driver-status-select">
+            <option value="UNVERIFIED">UNVERIFIED</option>
+            <option value="PENDING_REVIEW">PENDING_REVIEW</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="SUSPENDED">SUSPENDED</option>
+          </select>
+          <button id="set-driver-status-btn" class="btn-primary" type="button">Save Driver Status</button>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <div class="row" style="justify-content: space-between">
+          <h2>Vehicle</h2>
+          <div id="vehicle-status-badge"></div>
+        </div>
+        <div id="vehicle-info"></div>
+        <div class="row">
+          <button id="approve-vehicle-btn" class="btn-primary" type="button">Approve Vehicle</button>
+          <button id="reject-vehicle-btn" class="btn-danger" type="button">Reject Vehicle</button>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <div class="row" style="justify-content: space-between">
+          <h2>Background Check</h2>
+          <div id="background-status-badge"></div>
+        </div>
+        <div class="row">
+          <select id="background-status-select">
+            <option value="NOT_STARTED">NOT_STARTED</option>
+            <option value="IN_REVIEW">IN_REVIEW</option>
+            <option value="PASSED">PASSED</option>
+            <option value="FAILED">FAILED</option>
+          </select>
+          <button id="set-background-btn" class="btn-primary" type="button">Save Background Status</button>
+        </div>
+      </section>
+
+      <section class="card stack">
+        <h2>Documents</h2>
+        <div id="documents-grid" class="doc-grid"></div>
+      </section>
+    </main>
+
+    <script type="module" src="./js/driver-detail.js"></script>
+  </body>
+</html>

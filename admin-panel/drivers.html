@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jada Admin Drivers</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="nav-brand">Jada Admin</div>
+      <nav class="nav-links">
+        <a class="nav-link" data-nav="dashboard" href="./index.html">Dashboard</a>
+        <a class="nav-link" data-nav="drivers" href="./drivers.html">Drivers</a>
+        <a class="nav-link" data-nav="trips" href="./trips.html">Trips</a>
+        <a class="nav-link" data-nav="payments" href="./payments.html">Payments</a>
+        <a class="nav-link" data-nav="settings" href="./settings.html">Settings</a>
+      </nav>
+      <div class="nav-actions">
+        <span id="signed-in-email" class="muted"></span>
+        <button id="logout-btn" class="btn-outline" type="button">Logout</button>
+      </div>
+    </header>
+
+    <main class="container stack">
+      <section class="card">
+        <h1 class="page-title">Drivers</h1>
+        <p class="page-subtitle">Review onboarding status and open a driver profile for approvals.</p>
+      </section>
+
+      <section class="card stack">
+        <div id="drivers-error" class="error-box hidden"></div>
+
+        <div class="row">
+          <label for="status-filter" class="muted">Filter by status:</label>
+          <select id="status-filter">
+            <option value="">All</option>
+            <option value="PENDING_REVIEW">PENDING_REVIEW</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="UNVERIFIED">UNVERIFIED</option>
+            <option value="SUSPENDED">SUSPENDED</option>
+          </select>
+          <span id="drivers-loading" class="muted">Loading drivers...</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>UID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="drivers-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./js/drivers.js"></script>
+  </body>
+</html>

@@ -40,6 +40,7 @@ import {
 import { getFareEstimate } from '../services/fareService';
 import { logBreadcrumb } from '../monitoring/crashlytics';
 import { useAuth } from '../hooks/useAuth';
+import { useDriver } from '../hooks/useDriver';
 import { db } from '../../firebase.config';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
@@ -70,6 +71,13 @@ const DESTINATION_CATEGORY_PAGES = Object.freeze({
   RECENT: 'RECENT',
   POPULAR: 'POPULAR',
 });
+const DRIVER_BOTTOM_TABS = Object.freeze([
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'earnings', label: 'Earnings', icon: 'trending-up' },
+  { key: 'messages', label: 'Messages', icon: 'chat-bubble-outline' },
+  { key: 'history', label: 'History', icon: 'history' },
+  { key: 'profile', label: 'Profile', icon: 'person-outline' },
+]);
 
 const SAVED_PLACES = [
   { id: 'home', label: 'Home', destination: 'Home Address' },
@@ -552,19 +560,20 @@ const HomeScreen = ({ navigation }) => {
     380,
     availableHeight - clamp(scale(56), 48, 84)
   );
+  const bottomTabsHeight = clamp(scale(58), 54, 68);
+  const onlineStripHeight = clamp(scale(56), 50, 66);
+  const bottomDockPadding = Math.max(insets.bottom, 8);
+  const bottomDockGap = clamp(scale(8), 6, 12);
+  const bottomDockHeight = bottomTabsHeight + onlineStripHeight + bottomDockPadding + bottomDockGap;
   const mapControlButtonSize = clamp(scale(46), 40, 58);
   const mapControlsRight = clamp(scale(14), 10, 24);
-  const mapControlsBottom = collapsedPanelHeight + insets.bottom + clamp(scale(22), 18, 32);
-  const menuPaddingTop = insets.top + (Platform.OS === 'ios' ? clamp(scale(18), 12, 24) : clamp(scale(12), 8, 18));
-  const sideMenuWidth = clamp(Math.round(width * 0.82), 270, 420);
-  const avatarSize = clamp(scale(60), 48, 76);
-  const avatarMargin = clamp(scale(12), 8, 18);
-  const menuItemPaddingV = clamp(scale(16), 12, 22);
+  const mapControlsBottom = collapsedPanelHeight + bottomDockHeight + clamp(scale(22), 18, 32);
   const modalPadding = clamp(scale(SIZES.padding), 16, 28);
   const profileModalWidth = Math.min(Math.round(width * 0.9), 520);
   const profileModalMaxHeight = clamp(Math.round(availableHeight * 0.94), 540, 900);
 
   const { user, signOut } = useAuth();
+  const { isOnline, eligibility, setAvailabilityOnline } = useDriver();
 
   useEffect(() => {
     logBreadcrumb('HomeScreen mounted');
@@ -591,8 +600,9 @@ const HomeScreen = ({ navigation }) => {
   // Lock state to prevent repeated recenter taps during an active request.
   const [recentering, setRecentering] = useState(false);
 
-  // Menu / modal visibility.
-  const [showMenu, setShowMenu] = useState(false);
+  // Bottom navigation + modal visibility.
+  const [activeBottomTab, setActiveBottomTab] = useState('home');
+  const [updatingAvailability, setUpdatingAvailability] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileKeyboardVisible, setProfileKeyboardVisible] = useState(false);
   const profileModalMinHeight = profileKeyboardVisible
@@ -1825,7 +1835,6 @@ const HomeScreen = ({ navigation }) => {
 
   // Sign-out flow with confirmation dialog.
   const handleSignOut = async () => {
-    setShowMenu(false);
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -1837,6 +1846,75 @@ const HomeScreen = ({ navigation }) => {
         },
       },
     ]);
+  };
+
+  const handleToggleOnline = async () => {
+    const nextOnline = !isOnline;
+    setUpdatingAvailability(true);
+
+    try {
+      const result = await setAvailabilityOnline(nextOnline);
+      if (result?.success) {
+        setAlertState({
+          visible: true,
+          type: 'success',
+          title: nextOnline ? 'You are online' : 'You are offline',
+          message: nextOnline
+            ? 'You can now receive trip requests.'
+            : 'Trip requests are paused.',
+        });
+        return;
+      }
+
+      setAlertState({
+        visible: true,
+        type: 'error',
+        title: 'Go online blocked',
+        message:
+          result?.eligibility?.blockingReasons?.join('\n') ||
+          'Complete onboarding requirements before going online.',
+      });
+    } catch (error) {
+      setAlertState({
+        visible: true,
+        type: 'error',
+        title: 'Status update failed',
+        message: error?.message || 'Unable to update availability.',
+      });
+    } finally {
+      setUpdatingAvailability(false);
+    }
+  };
+
+  const showBottomTabAlert = (title, message) => {
+    setAlertState({
+      visible: true,
+      type: 'info',
+      title,
+      message,
+    });
+  };
+
+  const handleBottomTabPress = (tabKey) => {
+    setActiveBottomTab(tabKey);
+    if (tabKey === 'home') {
+      return;
+    }
+    if (tabKey === 'profile') {
+      setShowProfileModal(true);
+      return;
+    }
+    if (tabKey === 'earnings') {
+      showBottomTabAlert('Earnings', 'Earnings view will be enabled in the next iteration.');
+      return;
+    }
+    if (tabKey === 'messages') {
+      showBottomTabAlert('Messages', 'No new messages right now.');
+      return;
+    }
+    if (tabKey === 'history') {
+      showBottomTabAlert('Trip history', 'Trip history will be enabled in the next iteration.');
+    }
   };
 
   // Recenter map quickly using last-known location first, then fresher GPS.
@@ -3028,27 +3106,37 @@ const handleSchedulePress = () => {
               styles.headerButton,
               { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
             ]}
-            onPress={() => setShowMenu(true)}
-          >
-            <Text style={styles.menuIcon}>☰</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.headerButton,
-              { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
-            ]}
             onPress={() =>
-              setAlertState({
-                visible: true,
-                type: 'info',
-                title: 'Notifications',
-                message: 'No new notifications.',
-              })
+              showBottomTabAlert(
+                'Navigation moved',
+                'Use the bottom navigation for Home, Earnings, Messages, History, and Profile.'
+              )
             }
           >
-            <MaterialIcons name="notifications" size={22} color={COLORS.teal} />
+            <MaterialIcons name="menu" size={22} color={COLORS.teal} />
           </TouchableOpacity>
+
+          <View style={styles.headerRightStatusWrap}>
+            <TouchableOpacity
+              style={[
+                styles.headerAvatarButton,
+                { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
+              ]}
+              onPress={() => {
+                setActiveBottomTab('profile');
+                setShowProfileModal(true);
+              }}
+              onLongPress={handlePickAvatar}
+              disabled={isUploadingAvatar || isPickingAvatar}
+            >
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.headerAvatarImage} />
+              ) : (
+                <Text style={styles.headerAvatarInitial}>{profileInitial.toUpperCase()}</Text>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.headerOnlineText}>{isOnline ? 'Online' : 'Offline'}</Text>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -3058,6 +3146,7 @@ const handleSchedulePress = () => {
           styles.bottomPanel,
           {
             height: panelHeightAnim,
+            bottom: bottomDockHeight,
             borderTopLeftRadius: panelRadius,
             borderTopRightRadius: panelRadius,
           },
@@ -3957,158 +4046,63 @@ const handleSchedulePress = () => {
         </ScrollView>
       </Animated.View>
 
-      {/* Slide-in side menu. */}
-      <Modal visible={showMenu} animationType="slide" transparent={true} onRequestClose={() => setShowMenu(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowMenu(false)}>
-          <View
-            style={[
-              styles.sideMenu,
-              {
-                width: sideMenuWidth,
-                paddingTop: menuPaddingTop,
-                paddingBottom: Math.max(insets.bottom + 18, 22),
-              },
-            ]}
+      <View style={[styles.driverBottomDock, { paddingBottom: bottomDockPadding }]}>
+        <View style={[styles.goOnlineStrip, { minHeight: onlineStripHeight }]}>
+          <TouchableOpacity
+            style={[styles.goOnlineButton, updatingAvailability && styles.goOnlineButtonDisabled]}
+            onPress={handleToggleOnline}
+            disabled={updatingAvailability}
           >
-            <View style={styles.sideMenuTop}>
-              <View style={styles.menuProfileRow}>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={handlePickAvatar}
-                  disabled={isUploadingAvatar || isPickingAvatar}
-                  style={{ marginRight: avatarMargin }}
-                >
-                  <View
-                    style={[
-                      styles.profileAvatar,
-                      {
-                        width: avatarSize,
-                        height: avatarSize,
-                        borderRadius: avatarSize / 2,
-                      },
-                    ]}
-                  >
-                    {avatarUrl ? (
-                      <Image source={{ uri: avatarUrl }} style={styles.profileAvatarImage} />
-                    ) : (
-                      <Text style={styles.avatarText}>{profileInitial.toUpperCase()}</Text>
-                    )}
+            {updatingAvailability ? (
+              <ActivityIndicator size="small" color={COLORS.white} />
+            ) : (
+              <MaterialIcons
+                name={isOnline ? 'pause-circle-filled' : 'double-arrow'}
+                size={18}
+                color={COLORS.white}
+              />
+            )}
+            <Text style={styles.goOnlineButtonText}>
+              {updatingAvailability ? 'UPDATING...' : isOnline ? 'GO OFFLINE' : 'GO ONLINE'}
+            </Text>
+          </TouchableOpacity>
 
-                    <View style={styles.avatarEditBadge}>
-                      {isUploadingAvatar || isPickingAvatar ? (
-                        <ActivityIndicator size="small" color={COLORS.white} />
-                      ) : (
-                        <MaterialIcons name="edit" size={14} color={COLORS.white} />
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-                <Text style={styles.profileNameCompact}>
-                  {firstName || lastName ? `${firstName} ${lastName}` : user?.phoneNumber || 'Guest'}
-                </Text>
-              </View>
-
-              <TouchableOpacity style={styles.menuCloseButton} onPress={() => setShowMenu(false)}>
-                <Text style={styles.menuCloseButtonText}>X</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.menuItemsList}>
-              <TouchableOpacity
-                style={styles.menuListItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  setShowProfileModal(true);
-                }}
-              >
-                <View style={styles.menuListIconWrap}>
-                  <MaterialIcons name="person" size={20} color={COLORS.teal} />
-                </View>
-                <Text style={styles.menuListItemText}>Profile</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuListItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  setAlertState({
-                    visible: true,
-                    type: 'info',
-                    title: 'Payment',
-                    message: 'Payment settings will be enabled in the next iteration.',
-                  });
-                }}
-              >
-                <View style={styles.menuListIconWrap}>
-                  <MaterialIcons name="payment" size={20} color={COLORS.teal} />
-                </View>
-                <Text style={styles.menuListItemText}>Payment</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuListItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  setAlertState({
-                    visible: true,
-                    type: 'info',
-                    title: 'Trip history',
-                    message: 'Trip history will be enabled in the next iteration.',
-                  });
-                }}
-              >
-                <View style={styles.menuListIconWrap}>
-                  <MaterialIcons name="history" size={20} color={COLORS.teal} />
-                </View>
-                <Text style={styles.menuListItemText}>Trip history</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuListItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  setAlertState({
-                    visible: true,
-                    type: 'info',
-                    title: 'Notifications',
-                    message: 'No new notifications.',
-                  });
-                }}
-              >
-                <View style={styles.menuListIconWrap}>
-                  <MaterialIcons name="notifications" size={20} color={COLORS.teal} />
-                </View>
-                <Text style={styles.menuListItemText}>Notification</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuListItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  setAlertState({
-                    visible: true,
-                    type: 'info',
-                    title: 'Settings',
-                    message: 'Settings will be enabled in the next iteration.',
-                  });
-                }}
-              >
-                <View style={styles.menuListIconWrap}>
-                  <MaterialIcons name="settings" size={20} color={COLORS.teal} />
-                </View>
-                <Text style={styles.menuListItemText}>Settings</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.menuBottomActions}>
-              <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
-                <MaterialIcons name="logout" size={20} color={COLORS.white} />
-                <Text style={styles.logoutButtonText}>Logout</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.goOnlineMetaWrap}>
+            <Text style={styles.goOnlineMetaTitle}>{isOnline ? 'You are online' : 'You are offline'}</Text>
+            <Text style={styles.goOnlineMetaSubtitle}>
+              {isOnline
+                ? 'Trip requests can now reach you.'
+                : eligibility?.canGoOnline
+                  ? 'Tap Go Online to receive trip requests.'
+                  : 'Complete onboarding to go online.'}
+            </Text>
           </View>
-        </TouchableOpacity>
-      </Modal>
+        </View>
+
+        <View style={[styles.driverBottomNav, { minHeight: bottomTabsHeight }]}>
+          {DRIVER_BOTTOM_TABS.map((tab) => {
+            const isActive = activeBottomTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.driverBottomNavItem, isActive && styles.driverBottomNavItemActive]}
+                onPress={() => handleBottomTabPress(tab.key)}
+              >
+                <MaterialIcons
+                  name={tab.icon}
+                  size={20}
+                  color={isActive ? COLORS.primary : COLORS.textSecondary}
+                />
+                <Text
+                  style={[styles.driverBottomNavLabel, isActive && styles.driverBottomNavLabelActive]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
       {/* Profile editor modal. */}
       <Modal visible={showProfileModal} animationType="slide" transparent={true} onRequestClose={() => setShowProfileModal(false)}>
@@ -4231,6 +4225,10 @@ const handleSchedulePress = () => {
                 disabled={isSavingProfile}
                 style={styles.saveButton}
               />
+              <TouchableOpacity style={styles.profileLogoutButton} onPress={handleSignOut}>
+                <MaterialIcons name="logout" size={18} color={COLORS.textSecondary} />
+                <Text style={styles.profileLogoutButtonText}>Sign out</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -4271,6 +4269,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.medium,
+  },
+  headerRightStatusWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarButton: {
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
+  },
+  headerAvatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  headerAvatarInitial: {
+    fontSize: FONTS.sizes.medium,
+    fontWeight: '700',
+    color: COLORS.teal,
+  },
+  headerOnlineText: {
+    marginTop: 4,
+    fontSize: FONTS.sizes.tiny,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   menuIcon: {
     fontSize: 20,
@@ -4918,6 +4947,92 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...SHADOWS.medium,
   },
+  driverBottomDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 10,
+    zIndex: 35,
+    elevation: 35,
+    backgroundColor: 'transparent',
+  },
+  goOnlineStrip: {
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    ...SHADOWS.medium,
+  },
+  goOnlineButton: {
+    minWidth: 132,
+    borderRadius: 999,
+    backgroundColor: COLORS.teal,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: `${COLORS.white}66`,
+  },
+  goOnlineButtonDisabled: {
+    opacity: 0.7,
+  },
+  goOnlineButtonText: {
+    marginLeft: 6,
+    color: COLORS.white,
+    fontSize: FONTS.sizes.small,
+    fontWeight: '800',
+    letterSpacing: 0.35,
+  },
+  goOnlineMetaWrap: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  goOnlineMetaTitle: {
+    color: COLORS.white,
+    fontSize: FONTS.sizes.small,
+    fontWeight: '700',
+  },
+  goOnlineMetaSubtitle: {
+    marginTop: 1,
+    color: `${COLORS.white}CC`,
+    fontSize: FONTS.sizes.tiny,
+  },
+  driverBottomNav: {
+    marginTop: 8,
+    borderRadius: 14,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    ...SHADOWS.medium,
+  },
+  driverBottomNavItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  driverBottomNavItemActive: {
+    backgroundColor: `${COLORS.primary}14`,
+  },
+  driverBottomNavLabel: {
+    marginTop: 2,
+    fontSize: FONTS.sizes.tiny,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  driverBottomNavLabelActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -5093,6 +5208,19 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: COLORS.teal,
     marginBottom: 4,
+  },
+  profileLogoutButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  profileLogoutButtonText: {
+    marginLeft: 6,
+    fontSize: FONTS.sizes.small,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
   },
 });
 

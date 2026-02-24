@@ -1,0 +1,49 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAllowedImage() {
+      return request.resource != null &&
+        request.resource.contentType.matches('image/(jpg|jpeg|png)');
+    }
+
+    function isAllowedDriverDocument() {
+      return request.resource != null &&
+        request.resource.contentType.matches('^(image/(jpg|jpeg|png)|application/pdf)$');
+    }
+
+    function isWithinSizeLimit(bytes) {
+      return request.resource != null &&
+        request.resource.size <= bytes;
+    }
+
+    match /driver_docs/{uid}/{docType}/{fileName} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin() ||
+        (isOwner(uid) && isAllowedDriverDocument() && isWithinSizeLimit(5 * 1024 * 1024));
+      allow delete: if isAdmin() || isOwner(uid);
+    }
+
+    match /avatars/{uid}/{allPaths=**} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin() ||
+        (isOwner(uid) && isAllowedImage() && isWithinSizeLimit(8 * 1024 * 1024));
+      allow delete: if isAdmin() || isOwner(uid);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

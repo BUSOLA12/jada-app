@@ -16,9 +16,3 @@ apps/*/.metro-health-check*
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-
-google-services.json
-GoogleService-Info.plist
-.env
-.env.local
-.env.*.local
