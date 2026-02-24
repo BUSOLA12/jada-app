@@ -19,5 +19,5 @@ yarn-error.*
 .env
 
 
-firebase-config.js
+admin-panel/js/firebase-config.js
 
